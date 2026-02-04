@@ -1,5 +1,5 @@
 import pgPromise from 'pg-promise';
-import { config } from '../config.js';
+import { config } from '../config.ts';
 
 const pgp = pgPromise({});
 
