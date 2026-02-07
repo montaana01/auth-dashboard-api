@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import { config } from './config.ts';
 import { pingDb } from './lib/db.ts';
 import { pingSmtp } from './lib/nodemailer.ts';
@@ -8,6 +9,7 @@ import { authMiddleware } from "./middleware/auth.js";
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/', (_req, res) => {
   res.json({ ok: true, service: 'auth-dashboard-api' });
