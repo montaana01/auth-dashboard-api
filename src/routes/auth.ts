@@ -92,3 +92,60 @@ authRouter.post('/sign-in', (req, res) => {
     body: req.body,
   });
 });
+
+authRouter.get('/verify-email', async (req, res) => {
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
+  if (!token) {
+    return res.status(400).json({
+      ok: false,
+      message: 'Verification token is required',
+    });
+  }
+
+  if (!db) {
+    return res.status(500).json({
+      ok: false,
+      message: 'Something went wrong with PostgreSQL!',
+    });
+  }
+
+  const payload = verifyEmailVerificationToken(token);
+  if (!payload) {
+    return res.status(400).json({
+      ok: false,
+      message: 'Invalid or expired verification token',
+    });
+  }
+
+  try {
+    const updated = await db.oneOrNone<{ id: number }>(
+      `
+      UPDATE users
+      SET email_verified = TRUE
+      WHERE id = $1
+        AND lower(email) = lower($2)
+        AND email_verified = FALSE
+      RETURNING id
+      `,
+      [payload.userId, payload.email],
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        ok: false,
+        message: 'User not found for this token',
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      message: 'Email has been verified successfully',
+    });
+  } catch (error: unknown) {
+    console.error('Email verification failed:', error);
+    return res.status(500).json({
+      ok: false,
+      message: 'Email verification failed',
+    });
+  }
+});
