@@ -2,6 +2,7 @@ import express from 'express';
 import { config } from './config.ts';
 import { pingDb } from './lib/db.ts';
 import { authRouter } from './routes/auth.ts';
+import { usersRouter } from "./routes/users.js";
 
 const app = express();
 app.use(express.json());
@@ -21,6 +22,7 @@ app.get('/check/db', async (_req, res) => {
 });
 
 app.use('/auth', authRouter);
+app.use('/users', usersRouter);
 
 app.listen(config.port, () => {
   console.log(`Example app listening on port ${config.port}`);
