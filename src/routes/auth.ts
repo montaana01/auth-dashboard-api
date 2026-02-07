@@ -153,6 +153,13 @@ authRouter.post('/sign-in', async (req, res) => {
   });
 });
 
+authRouter.post('/logout', authMiddleware, async (_req, res) => {
+  if (!db) return res.status(500).json({ ok: false, message: 'Database is not configured' });
+  const auth = res.locals.auth;
+  await db.none('UPDATE sessions SET revoked_at = now() WHERE id = $1', [auth.session.id]);
+  res.clearCookie(config.cookieName);
+  return res.status(200).json({ ok: true, message: 'Logged out' });
+});
 
 authRouter.get('/verify-email', async (req, res) => {
   const token = typeof req.query.token === 'string' ? req.query.token : '';
