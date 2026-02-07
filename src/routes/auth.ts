@@ -7,6 +7,7 @@ import {
   verifyEmailVerificationToken,
 } from '../lib/verification.ts';
 import { sendEmailVerificationMail } from '../lib/nodemailer.ts';
+import {createSessionToken, hashToken} from "../lib/session.js";
 
 export const authRouter = Router();
 
@@ -84,14 +85,58 @@ authRouter.post('/sign-up', async (req, res) => {
   }
 });
 
-authRouter.post('/sign-in', (req, res) => {
-  res.status(200).json({
+authRouter.post('/sign-in', async (req, res) => {
+  let { email, password } = req.body ?? {};
+  if (email) email = email.trim().toLowerCase();
+  if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+    return res.status(400).json({ ok: false, message: 'Invalid request body. Expected non-empty email and password' });
+  }
+  if (!db) return res.status(500).json({ ok: false, message: 'Database is not configured' });
+
+  const user = await db.oneOrNone<{
+    id: number; email: string; password_hash: string; is_blocked: boolean; email_verified: boolean;
+  }>(
+    `select id, email, password_hash, is_blocked, email_verified
+     from users
+     where lower(email) = lower($1)
+     limit 1`,
+    [email]
+  );
+
+  if (!user) return res.status(401).json({ ok: false, message: 'Invalid email or password' });
+  if (user.is_blocked) return res.status(403).json({ ok: false, message: 'User is blocked' });
+
+  const ok = await bcrypt.compare(password, user.password_hash);
+  if (!ok) return res.status(401).json({ ok: false, message: 'Invalid email or password' });
+
+  const token = createSessionToken();
+  const tokenHash = hashToken(token);
+
+  const sessionTtlDays = config.sessionTtlDays;
+  const session = await db.one<{ id: number; expires_at: string }>(
+    `insert into sessions(user_id, token_hash, expires_at)
+     values($1, $2, now() + ($3 || ' days')::interval)
+     returning id, expires_at`,
+    [user.id, tokenHash, String(sessionTtlDays)]
+  );
+
+  await db.none('UPDATE users SET last_login_at = now() WHERE id = $1', [user.id]);
+
+  res.cookie(config.cookieName, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: config.cookieSecure,
+    maxAge: sessionTtlDays * 24 * 60 * 60 * 1000,
+  });
+
+  return res.status(200).json({
     ok: true,
-    endpoint: 'auth/sign-in',
-    message: 'Static sign-in response',
-    body: req.body,
+    message: 'Signed in',
+    user: { id: user.id, email: user.email, emailVerified: user.email_verified },
+    session: { id: session.id, expiresAt: session.expires_at },
   });
 });
+
 
 authRouter.get('/verify-email', async (req, res) => {
   const token = typeof req.query.token === 'string' ? req.query.token : '';

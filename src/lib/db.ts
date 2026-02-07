@@ -1,7 +1,7 @@
 import pgPromise from 'pg-promise';
 import { config } from '../config.ts';
 
-const pgp = pgPromise({});
+export const pgp = pgPromise({});
 
 export const db = config.postgresUri ? pgp(config.postgresUri) : null;
 
