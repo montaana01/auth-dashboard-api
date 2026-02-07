@@ -5,9 +5,19 @@ const postgresUri =
   process.env.EXTERNAL_POSTGRES_URI ||
   process.env.POSTGRES_URI;
 
+const corsAllowedOrigins = Array.from(
+  new Set(
+    (process.env.CORS_ALLOWED_ORIGINS || process.env.FRONTEND_BASE_URL || '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ),
+);
+
 export const config = {
   port: Number(process.env.PORT || 3000),
   postgresUri,
+  corsAllowedOrigins,
   smtpHost: process.env.SMTP_HOST || '',
   smtpPort: Number(process.env.SMTP_PORT || 587),
   smtpSecure: Boolean(process.env.SMTP_SECURE === 'true'),

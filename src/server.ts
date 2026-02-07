@@ -10,6 +10,30 @@ import { authMiddleware } from "./middleware/auth.js";
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const isAllowedOrigin = typeof origin === 'string' && config.corsAllowedOrigins.includes(origin);
+
+  if (isAllowedOrigin && origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+
+    const requestHeaders = req.headers['access-control-request-headers'];
+    if (typeof requestHeaders === 'string' && requestHeaders.trim()) {
+      res.header('Access-Control-Allow-Headers', requestHeaders);
+    } else {
+      res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    }
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(isAllowedOrigin ? 204 : 403);
+  }
+
+  return next();
+});
 
 app.get('/', (_req, res) => {
   res.json({ ok: true, service: 'auth-dashboard-api' });
