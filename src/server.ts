@@ -1,6 +1,7 @@
 import express from 'express';
 import { config } from './config.ts';
 import { pingDb } from './lib/db.ts';
+import { pingSmtp } from './lib/nodemailer.ts';
 import { authRouter } from './routes/auth.ts';
 import { usersRouter } from "./routes/users.js";
 
@@ -17,6 +18,16 @@ app.get('/check/db', async (_req, res) => {
     res.status(status.connected ? 200 : 500).json(status);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown database error';
+    res.status(500).json({ connected: false, details: message });
+  }
+});
+
+app.get('/check/smtp', async (_req, res) => {
+  try {
+    const status = await pingSmtp();
+    res.status(status.connected ? 200 : 500).json(status);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown SMTP error';
     res.status(500).json({ connected: false, details: message });
   }
 });
