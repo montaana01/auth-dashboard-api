@@ -14,4 +14,8 @@ export const config = {
   smtpUser: process.env.SMTP_USER || '',
   smtpPass: process.env.SMTP_PASS || '',
   smtpFrom: process.env.SMTP_FROM || '',
+  bcryptSaltRounds: Number(process.env.BCRYPT_SALT || 10),
+  emailVerificationSecret: process.env.EMAIL_SECRET || 'change-me-before-use',
+  emailVerificationTtlMinutes: Number(process.env.EMAIL_TTL || 1440) * 60 * 24,
+  applicationBaseUrl: process.env.FRONTEND_BASE_URL || 'http://localhost',
 };

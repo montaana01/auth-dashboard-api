@@ -1,14 +1,87 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import { config } from '../config.ts';
+import { db } from '../lib/db.ts';
+import {
+  createEmailVerificationToken,
+  verifyEmailVerificationToken,
+} from '../lib/verification.ts';
+import { sendEmailVerificationMail } from '../lib/nodemailer.ts';
 
 export const authRouter = Router();
 
-authRouter.post('/sign-up', (req, res) => {
-  res.status(200).json({
-    ok: true,
-    endpoint: 'auth/sign-up',
-    message: 'Static sign-up response',
-    body: req.body,
-  });
+authRouter.post('/sign-up', async (req, res) => {
+  let { email, password } = req.body ?? {};
+  if (email) email = email.trim().toLowerCase();
+  if (
+    typeof email !== 'string' ||
+    typeof password !== 'string' ||
+    email.trim().length === 0 ||
+    password.length === 0
+  ) {
+    return res.status(400).json({
+      ok: false,
+      message: 'Invalid request body. Expected non-empty email and password',
+    });
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(password, config.bcryptSaltRounds);
+    if (!db) {
+      return res.status(500).json({
+        ok: false,
+        message: 'Something went wrong with PostgreSQL!',
+      });
+    }
+    const user = await db.one<{
+      id: number;
+      email: string;
+      created_at: string;
+      is_blocked: boolean;
+      email_verified: boolean;
+    }>(
+      `
+      INSERT INTO users (email, password_hash, is_blocked, email_verified)
+      VALUES ($1, $2, FALSE, FALSE)
+      RETURNING id, email, created_at, is_blocked, email_verified
+    `,
+      [email, passwordHash],
+    );
+
+    const verificationToken = createEmailVerificationToken(user.id, user.email);
+    const verificationLink =
+      `${config.applicationBaseUrl}/auth/verify-email?token=` + encodeURIComponent(verificationToken);
+
+    sendEmailVerificationMail(user.email, verificationLink)
+      .catch((error) => {
+        console.error('Failed to send verification email:', error);
+      });
+
+    return res.status(201).json({
+      ok: true,
+      message: 'User registered. Verification email has been sent.',
+      user: {
+        id: user.id,
+        email: user.email,
+        createdAt: user.created_at,
+        isBlocked: user.is_blocked,
+        emailVerified: user.email_verified,
+      },
+    });
+  } catch (error) {
+    const dbError = error as { code?: string };
+    if (dbError.code === '23505') {
+      return res.status(409).json({
+        ok: false,
+        message: 'User with this email already exists',
+      });
+    }
+
+    return res.status(500).json({
+      ok: false,
+      message: 'Registration failed',
+    });
+  }
 });
 
 authRouter.post('/sign-in', (req, res) => {
