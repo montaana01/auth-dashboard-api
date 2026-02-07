@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { config } from '../config.ts';
 import { VerificationPayload } from "../types/verificationTypes.js";
-import { encodeBase64, decodeBase64 } from "../helpers/base64.js";
+import { encodeBase64, decodeBase64 } from "./base64.js";
 
 const sign = (payload: string): string =>
   crypto.createHmac('sha256', config.emailVerificationSecret).update(payload).digest('base64url');

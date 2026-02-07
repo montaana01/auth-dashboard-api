@@ -18,4 +18,7 @@ export const config = {
   emailVerificationSecret: process.env.EMAIL_SECRET || 'change-me-before-use',
   emailVerificationTtlMinutes: Number(process.env.EMAIL_TTL || 1440) * 60 * 24,
   applicationBaseUrl: process.env.FRONTEND_BASE_URL || 'http://localhost',
+  cookieName: process.env.SESSION_COOKIE_NAME || 'session',
+  sessionTtlDays: Number(process.env.SESSION_TTL_DAYS || 30),
+  cookieSecure: Boolean(process.env.COOKIE_SECURE === 'true'),
 };
