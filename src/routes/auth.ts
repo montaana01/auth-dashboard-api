@@ -140,7 +140,7 @@ authRouter.post('/sign-in', async (req, res) => {
 
   res.cookie(config.cookieName, token, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'none',
     secure: config.cookieSecure,
     maxAge: sessionTtlDays * 24 * 60 * 60 * 1000,
   });
