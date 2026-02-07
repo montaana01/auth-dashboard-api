@@ -7,9 +7,25 @@ import {
   verifyEmailVerificationToken,
 } from '../lib/verification.ts';
 import { sendEmailVerificationMail } from '../lib/nodemailer.ts';
-import {createSessionToken, hashToken} from "../lib/session.js";
+import { createSessionToken, hashToken } from "../lib/session.js";
+import { authMiddleware } from "../middleware/auth.js";
 
 export const authRouter = Router();
+
+authRouter.get('/me', authMiddleware, (_req, res) => {
+  const auth = res.locals.auth;
+  return res.status(200).json({
+    ok: true,
+    user: {
+      id: auth.user.id,
+      email: auth.user.email,
+      emailVerified: auth.user.emailVerified,
+      isBlocked: auth.user.isBlocked,
+      lastLoginAt: auth.user.lastLoginAt,
+    },
+    session: auth.session,
+  });
+});
 
 authRouter.post('/sign-up', async (req, res) => {
   let { email, password } = req.body ?? {};
